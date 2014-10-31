@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="资源文件\instance">
+      <UniqueIdentifier>{f60fd17f-fb2e-45aa-b6a7-0ed9714dfe45}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="资源文件\CPPutilibs">
+      <UniqueIdentifier>{26e2e3d2-c03f-414b-a777-77b332102456}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="GraphColoring.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CPPutilibs\Log.h">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CPPutilibs\Random.h">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CPPutilibs\RandSelect.h">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CPPutilibs\RangeRand.h">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CPPutilibs\Timer.h">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClInclude>
+    <ClInclude Include="solver.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphColoring.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CPPutilibs\Random.cpp">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CPPutilibs\RangeRand.cpp">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CPPutilibs\RandSelect.cpp">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CPPutilibs\Timer.cpp">
+      <Filter>资源文件\CPPutilibs</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\instance\DSJC125.5.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC125.9.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC250.1.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC250.5.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC250.9.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC500.1.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC500.5.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC500.9.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC1000.1.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC1000.5.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC1000.9.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="..\instance\DSJC125.1.col">
+      <Filter>资源文件\instance</Filter>
+    </None>
+    <None Include="log.csv">
+      <Filter>资源文件</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\instance\optima.txt">
+      <Filter>资源文件\instance</Filter>
+    </Text>
+  </ItemGroup>
+</Project>
