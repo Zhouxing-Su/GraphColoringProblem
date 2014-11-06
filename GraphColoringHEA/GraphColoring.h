@@ -11,6 +11,7 @@
 
 
 #include <vector>
+#include <set>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -19,6 +20,7 @@
 #include "../CPPutilibs/Timer.h"
 #include "../CPPutilibs/Random.h"
 #include "../CPPutilibs/RangeRand.h"
+#include "../CPPutilibs/RandSelect.h"
 
 
 class GraphColoring
@@ -39,29 +41,63 @@ public:     // public types and constant
     // adjacent color for all vertices
     typedef std::vector<AdjColor> AdjColorTable;
 
-    const int MAX_CONFLICT;
+    typedef std::set<int> ParentSet;
 
-    // total color number
-    const int colorNum;
+    const int MAX_CONFLICT; // calculated by vertex number
+    const int colorNum;     // total color number
+
+    struct Output
+    {
+    public:
+        Output( int c, const VertexColor &vc = VertexColor() )
+            :conflictEdgeNum( c ), vertexColor( vc )
+        {
+        }
+
+        int conflictEdgeNum;
+        VertexColor vertexColor;
+    };
 
 private:    // private types
     class Solution
     {
     public:
+        struct ConflictReduce
+        {
+        public:
+            ConflictReduce( int r, int v = 0, int d = 0 )
+                : reduce( r ), vertex( v ), desColor( d )
+            {
+            }
+
+            int reduce;     // positive value if improved
+            int vertex;
+            int desColor;
+        };
+
         // generate color for each node randomly
-        Solution( const GraphColoring &rgc );
+        Solution( const GraphColoring *pgc );
+        // copy solution and reset the tabu table
+        Solution( const Solution &s );
+        // copy solution and reset the tabu table
+        Solution& operator=(const Solution &s);
 
-        void tabuSearch();
+        // search until local optima is found, then return iteration count
+        // (the object will be the optima in the search path after this is called)
+        int localSearch( int maxIterCount );
+        // search until maxIterCount is meet, then return iteration count
+        // (the object will be the optima in the search path after this is called)
+        int tabuSearch( int maxIterCount, int tabuTenureBase );
 
-        // return color conflict
-        int evalutate() const { return conflict; }
+        // return color conflictEdgeNum
+        int evaluate() const { return conflictEdgeNum; }
 
         // convert to output format
-        operator VertexColor() { return vertexColor; }
+        operator Output() const { return Output( conflictEdgeNum, vertexColor ); }
 
     private:
-        const GraphColoring &gc;
-        int conflict;
+        const GraphColoring *gc;  // avoid deep copy
+        int conflictEdgeNum;
 
         VertexColor vertexColor;
         AdjColorTable adjColorTab;
@@ -72,12 +108,16 @@ private:    // private types
 public:     // solving procedure
     GraphColoring( const AdjVertexList &adjVertexList, int colorNum );
 
-    void init();
+    // set arguments of the algorithm and generate the initial population
+    void init( int tabuTenureBase = 0,
+        int maxGenerationCount = 1000, int maxIterCount = 10000,
+        int populationSize = 1 );
+    // find the optima and record it to attribute "optima".
     void solve();
 
-    // return color conflict pair number
+    // return color conflictEdgeNum number
     int check() const;     // check optima
-    // return color conflict pair number
+    // return color conflictEdgeNum number
     int check( const VertexColor &vertexColor ) const;
     // log to console
     void print() const;
@@ -88,14 +128,17 @@ public:     // solving procedure
 
 private:    // functional procedure
     void genInitPopulation( int size ); // contain optima recording
+    ParentSet selectParents();
+    Solution combineParents( const ParentSet &parents );
+    bool updateOptima( const Solution &sln );   // return true if there is no conflict
+    void updatePopulation( const Solution &offspring );
 
-private:    // data member
+private:    // attribute
     AdjVertexList adjVertexList;
 
     // solution and output
     std::vector<Solution> population;
-    VertexColor optimaVertexColor;
-    int minConflict;
+    Output optima;
 
     // information for log
     int iterCount;
@@ -103,9 +146,10 @@ private:    // data member
     Timer timer;
     // information about the algorithm (initialized in init())
     std::string SOLVING_ALGORITHM;
+    int TABU_TENURE_BASE;
     int POPULATION_SIZE;
     int MAX_GENERATION_COUNT;
-    int MAX_NO_IMPROVE_COUNT;
+    int MAX_ITERATION_COUNT;
 };
 
 

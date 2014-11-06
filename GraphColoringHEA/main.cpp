@@ -29,9 +29,18 @@ void run( int inst, ofstream &logFile )
 {
     const string &instName = INSTANCE[0];
     GraphColoring::AdjVertexList adjVertexList( readInstance( instName ) );
-    GraphColoring gc( adjVertexList, readOptima( instName ) );
 
-    gc.init();
+    int colorNum = readOptima( instName );
+    int vertexNum = adjVertexList.size();
+
+    GraphColoring gc( adjVertexList, colorNum );
+
+    int tabuTenureBase = 0;
+    int maxGenerationCount = 100;
+    int maxIterCount = 100000;
+    int populationSize = 1;
+
+    gc.init( tabuTenureBase, maxGenerationCount, maxIterCount, populationSize );
     gc.solve();
     gc.print();
     gc.appendResultToSheet( instName, logFile );

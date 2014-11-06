@@ -6,22 +6,27 @@ using namespace std;
 ///=== [ solving procedure ] ===============================
 
 GraphColoring::GraphColoring( const AdjVertexList &avl, int cn )
-    : MAX_CONFLICT( avl.size() *avl.size() ), colorNum( cn ),
-    adjVertexList( avl ), population(), optimaVertexColor(), minConflict( MAX_CONFLICT ),
+    : MAX_CONFLICT( avl.size() * avl.size() ), colorNum( cn ),
+    adjVertexList( avl ), population(), optima( MAX_CONFLICT ),
     iterCount( 0 ), generationCount( 0 ), timer()
 {
     Random::setSeed();
 }
 
 
-void GraphColoring::init()
+void GraphColoring::init( int tabuTenureBase,
+    int maxGenerationCount, int maxIterCount, int populationSize )
 {
-    POPULATION_SIZE = 8;
-    MAX_GENERATION_COUNT = static_cast<int>(1E3);
-    MAX_NO_IMPROVE_COUNT = static_cast<int>(1E5);
+    POPULATION_SIZE = populationSize;
+    MAX_GENERATION_COUNT = maxGenerationCount;
+    MAX_ITERATION_COUNT = maxIterCount;
+    TABU_TENURE_BASE = tabuTenureBase;
 
     ostringstream ss;
     ss << "HEA(PS=" << POPULATION_SIZE
+        << "|GC=" << MAX_GENERATION_COUNT
+        << "|IC=" << MAX_ITERATION_COUNT
+        << "|TB=" << TABU_TENURE_BASE
         << ')';
     SOLVING_ALGORITHM = ss.str();
 
@@ -33,7 +38,25 @@ void GraphColoring::solve()
 {
     timer.reset();
 
+    for (; generationCount < MAX_GENERATION_COUNT; generationCount++) {
+        // select parents
+        ParentSet parentSet( selectParents() );
 
+        // combine
+        Solution offspring( combineParents( parentSet ) );
+
+        // local search on offspring
+        //offspring.localSearch( MAX_ITERATION_COUNT );
+        iterCount += offspring.tabuSearch( MAX_ITERATION_COUNT, TABU_TENURE_BASE );
+
+        // update optima and check if there is no conflict
+        if (updateOptima( offspring )) {
+            break;
+        }
+
+        // population update
+        updatePopulation( offspring );
+    }
 
     timer.record();
 }
@@ -42,44 +65,213 @@ void GraphColoring::solve()
 void GraphColoring::genInitPopulation( int size )
 {
     while (size--) {
-        population.push_back( Solution( *this ) );
-        int conflict = population.back().evalutate();
-        if (minConflict > conflict) {
-            minConflict = conflict;
-            optimaVertexColor = population.back();
-        }
+        population.push_back( Solution( this ) );
+        updateOptima( population.back() );
     }
 }
 
+GraphColoring::ParentSet GraphColoring::selectParents()
+{
+    RangeRand rr( 0, population.size() - 1 );
+    ParentSet parents;
+
+    parents.insert( rr() );
+
+    return parents;
+}
+
+GraphColoring::Solution GraphColoring::combineParents( const ParentSet &parents )
+{
+    Solution offspring( population[*parents.begin()] );
+
+    return offspring;
+}
+
+bool GraphColoring::updateOptima( const Solution &sln )
+{
+    if (optima.conflictEdgeNum > sln.evaluate()) {
+        optima = sln;
+    }
+    return (optima.conflictEdgeNum <= 0);
+}
+
+void GraphColoring::updatePopulation( const Solution &offspring )
+{
+    population[0] = offspring;
+}
 
 ///=== [ Solution ] ===============================
 
-GraphColoring::Solution::Solution( const GraphColoring &rgc )
-    : gc( rgc ), conflict( 0 ), vertexColor( rgc.adjVertexList.size() ),
-    adjColorTab( rgc.adjVertexList.size(), vector<int>( rgc.colorNum, 0 ) ),
-    tabu( rgc.adjVertexList.size(), vector<int>( rgc.colorNum, 0 ) )
+GraphColoring::Solution::Solution( const GraphColoring *pgc )
+    : gc( pgc ), conflictEdgeNum( 0 ), vertexColor( pgc->adjVertexList.size() ),
+    adjColorTab( pgc->adjVertexList.size(), vector<int>( pgc->colorNum, 0 ) ),
+    tabu( pgc->adjVertexList.size(), vector<int>( pgc->colorNum, 0 ) )
 {
     // assign color for each vertex randomly
-    RangeRand rColor( 0, gc.colorNum - 1 );
+    RangeRand rColor( 0, pgc->colorNum - 1 );
     for (size_t vertex = 0; vertex < vertexColor.size(); vertex++) {
         vertexColor[vertex] = rColor();
     }
 
-    // generate adjColorTable and evaluate conflict
+    // generate adjColorTable and evaluate conflictEdgeNum
     for (size_t vertex = 0; vertex < adjColorTab.size(); vertex++) {
         AdjColor &adjColor = adjColorTab[vertex];
-        const AdjVertex &adjVertex = gc.adjVertexList[vertex];
+        const AdjVertex &adjVertex = pgc->adjVertexList[vertex];
         for (size_t adj = 0; adj < adjVertex.size(); adj++) {
             adjColor[vertexColor[adjVertex[adj]]]++;
         }
-        conflict += adjColor[vertexColor[vertex]];
+        conflictEdgeNum += adjColor[vertexColor[vertex]];
     }
-    conflict /= 2;
+    conflictEdgeNum /= 2;
 }
 
-void GraphColoring::Solution::tabuSearch()
+GraphColoring::Solution::Solution( const Solution &s )
+    :gc( s.gc ), conflictEdgeNum( s.conflictEdgeNum ),
+    vertexColor( s.vertexColor ), adjColorTab( s.adjColorTab ),
+    tabu( gc->adjVertexList.size(), vector<int>( gc->colorNum, 0 ) )
 {
+}
 
+GraphColoring::Solution& GraphColoring::Solution::operator=(const Solution &s)
+{
+    gc = s.gc;
+    conflictEdgeNum = s.conflictEdgeNum;
+    vertexColor = s.vertexColor;
+    adjColorTab = s.adjColorTab;
+    tabu = AdjColorTable( gc->adjVertexList.size(), vector<int>( gc->colorNum, 0 ) );
+    return *this;
+}
+
+int GraphColoring::Solution::localSearch( int maxIterCount )
+{
+    RandSelect rs;
+
+    int iterCount = 0;
+    for (; iterCount < maxIterCount; iterCount++) {
+        ConflictReduce maxReduce( 0 );  // positive value if improved
+
+        // find best conflictEdgeNum reduction
+        for (size_t v = 0; v < adjColorTab.size(); v++) {
+            int color = vertexColor[v];
+            AdjColor &ac = adjColorTab[v];
+            if (ac[color] > 0) {    // for each vertex with conflictEdgeNum
+                for (int c = 0; c < gc->colorNum; c++) {
+                    if (c != color) {  // for each destination color
+                        int reduce = ac[color] - ac[c];
+                        if (reduce > maxReduce.reduce) {
+                            maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                            rs.reset();
+                        } else if ((reduce == maxReduce.reduce) && rs.isSelected()) {
+                            maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                        }
+                    }
+                }
+            }
+        }
+
+        // check if there is a conflictEdgeNum reduction
+        if (maxReduce.reduce <= 0) {
+            break;
+        }
+
+        // apply the conflictEdgeNum reduction
+        conflictEdgeNum -= maxReduce.reduce;
+        int srcColor = vertexColor[maxReduce.vertex];
+        vertexColor[maxReduce.vertex] = maxReduce.desColor;
+        const AdjVertex &av = gc->adjVertexList[maxReduce.vertex];
+        for (AdjVertex::const_iterator iter = av.begin();
+            iter != av.end(); iter++) {
+            adjColorTab[*iter][srcColor]--;
+            adjColorTab[*iter][maxReduce.desColor]++;
+        }
+    }
+
+    return iterCount;
+}
+
+int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
+{
+    Solution localOptima( *this );
+
+    RandSelect maxReduceSelect;
+
+    int conflictVertexNum = 0;
+    for (size_t i = 0; i < adjColorTab.size(); i++) {
+        if (adjColorTab[i][vertexColor[i]] > 0) {
+            conflictVertexNum++;
+        }
+    }
+
+    int iterCount = 1;
+    for (; iterCount < maxIterCount; iterCount++) {
+        ConflictReduce maxReduce( -gc->MAX_CONFLICT );  // positive value if improved
+
+        // find best conflictEdgeNum reduction
+        for (size_t v = 0; v < adjColorTab.size(); v++) {
+            int color = vertexColor[v];
+            AdjColor &ac = adjColorTab[v];
+            if (ac[color] > 0) {    // for each vertex with conflictEdgeNum
+                for (int c = 0; c < gc->colorNum; c++) {
+                    if (c != color) {  // for each destination color
+                        int reduce = ac[color] - ac[c];
+                        if (tabu[v][c] < iterCount) {
+                            if (reduce > maxReduce.reduce) {
+                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                                maxReduceSelect.reset();
+                            } else if ((reduce == maxReduce.reduce)
+                                && maxReduceSelect.isSelected()) {
+                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                            }
+                        } else if ((conflictEdgeNum - reduce) < gc->optima.conflictEdgeNum) {
+                            if (reduce > maxReduce.reduce) {
+                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                                maxReduceSelect.reset();
+                            } else if ((reduce == maxReduce.reduce)
+                                && (tabu[v][c] < iterCount)     // only consider non-tabu if the reduction is the same
+                                && maxReduceSelect.isSelected()) {
+                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // check if there is a conflictEdgeNum reduction
+        if (maxReduce.reduce <= 0) {
+            if (localOptima.conflictEdgeNum > conflictEdgeNum) {    // update local optima
+                localOptima = *this;
+            }
+        }
+
+        // apply the conflictEdgeNum reduction
+        conflictEdgeNum -= maxReduce.reduce;
+        int srcColor = vertexColor[maxReduce.vertex];
+        vertexColor[maxReduce.vertex] = maxReduce.desColor;
+        const AdjVertex &av = gc->adjVertexList[maxReduce.vertex];
+        for (AdjVertex::const_iterator iter = av.begin();
+            iter != av.end(); iter++) {
+            adjColorTab[*iter][srcColor]--;
+            if (adjColorTab[*iter][srcColor] == 0) {
+                conflictVertexNum--;
+            }
+            if (adjColorTab[*iter][maxReduce.desColor] == 0) {
+                conflictVertexNum++;
+            }
+            adjColorTab[*iter][maxReduce.desColor]++;
+        }
+
+        // update tabu list
+        int base = conflictVertexNum * gc->colorNum / 8;
+        RangeRand tabuTenurePerturb( -base / 4, base / 4 );
+        tabu[maxReduce.vertex][srcColor] = iterCount + base + tabuTenureBase + tabuTenurePerturb();
+    }
+
+
+    // replace the current solution with the local optima
+    *this = localOptima;
+
+    return iterCount;
 }
 
 
@@ -87,60 +279,57 @@ void GraphColoring::Solution::tabuSearch()
 
 int GraphColoring::check() const
 {
-    return check( optimaVertexColor );
+    return check( optima.vertexColor );
 }
 
 int GraphColoring::check( const VertexColor &vertexColor ) const
 {
-    int conflict = 0;
+    int conflictEdgeNum = 0;
     for (size_t vertex = 0; vertex < adjVertexList.size(); vertex++) {
         Color color = vertexColor[vertex];
         const AdjVertex &adjVertex = adjVertexList[vertex];
         for (size_t adj = 0; adj < adjVertex.size(); adj++) {
             if (vertexColor[adjVertex[adj]] == color) {
-                conflict++;
+                conflictEdgeNum++;
             }
         }
     }
 
-    return (conflict / 2);
+    return (conflictEdgeNum / 2);
 }
 
 void GraphColoring::print() const
 {
-    if (check() != minConflict) {
+    if (check() != optima.conflictEdgeNum) {
         cout << "[LogicError] ";
     }
-    cout << minConflict << endl;
+    cout << optima.conflictEdgeNum << endl;
 }
 
 
 void GraphColoring::initResultSheet( std::ofstream &csvFile )
 {
-    csvFile << "Date, Instance, Algorithm, MAX_ITER_COUNT, MAX_NO_IMPROVE_COUNT, "
-        "RandSeed, Duration, IterCount, GenerationCount, Optima, Solution" << std::endl;
+    csvFile << "Date, Instance, Algorithm, RandSeed, Duration, IterCount, GenerationCount, Optima, Solution" << std::endl;
 }
 
 void GraphColoring::appendResultToSheet(
     const std::string &instanceFileName, std::ofstream &csvFile ) const
 {
-    if (check() != minConflict) {
+    if (check() != optima.conflictEdgeNum) {
         csvFile << "[LogicError] ";
     }
 
     csvFile << Timer::getLocalTime() << ", "
         << instanceFileName << ", "
         << SOLVING_ALGORITHM << ", "
-        << MAX_GENERATION_COUNT << ", "
-        << MAX_NO_IMPROVE_COUNT << ", "
         << Random::getSeed() << ", "
         << timer.getTotalDuration() << ", "
         << iterCount << ", "
         << generationCount << ", "
-        << minConflict << ", ";
+        << optima.conflictEdgeNum << ", ";
 
-    for (VertexColor::const_iterator iter = optimaVertexColor.begin();
-        iter != optimaVertexColor.end(); iter++) {
+    for (VertexColor::const_iterator iter = optima.vertexColor.begin();
+        iter != optima.vertexColor.end(); iter++) {
         csvFile << *iter << ' ';
     }
 

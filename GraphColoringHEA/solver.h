@@ -1,3 +1,9 @@
+/**
+*   usage : 1. set algorithm arguments in run()
+*
+*   note :  1.
+*/
+
 #ifndef SOLVER_H
 
 #include <string>
