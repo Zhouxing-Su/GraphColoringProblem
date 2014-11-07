@@ -38,7 +38,7 @@ void run( int inst, ofstream &logFile )
 
     int tabuTenureBase = 0;
     int maxGenerationCount = 1;
-    int maxIterCount = 10000000;
+    int maxIterCount = 80000000;
     int populationSize = 1;
 
     for (int runTime = 4; runTime > 0; runTime--) {

@@ -193,13 +193,6 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
 {
     Solution localOptima( *this );
 
-    int conflictVertexNum = 0;
-    for (size_t i = 0; i < adjColorTab.size(); i++) {
-        if (adjColorTab[i][vertexColor[i]] > 0) {
-            conflictVertexNum++;
-        }
-    }
-
     RandSelect maxReduceSelectT;
     RandSelect maxReduceSelectNT;
     RangeRand tabuTenurePerturb( 0, 16 );
@@ -266,18 +259,11 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
         for (AdjVertex::const_iterator iter = av.begin();
             iter != av.end(); iter++) {
             adjColorTab[*iter][srcColor]--;
-            if (adjColorTab[*iter][srcColor] == 0) {
-                conflictVertexNum--;
-            }
-            if (adjColorTab[*iter][maxReduce.desColor] == 0) {
-                conflictVertexNum++;
-            }
             adjColorTab[*iter][maxReduce.desColor]++;
         }
 
         // update tabu list
-        int base = conflictVertexNum * gc->colorNum / 16;
-        tabu[maxReduce.vertex][srcColor] = iterCount + base + tabuTenureBase + tabuTenurePerturb();
+        tabu[maxReduce.vertex][srcColor] = iterCount + conflictEdgeNum + tabuTenureBase + tabuTenurePerturb();
     }
 
 
