@@ -27,7 +27,7 @@ int main()
 
 void run( int inst, ofstream &logFile )
 {
-    const string &instName = INSTANCE[0];
+    const string &instName = INSTANCE[2];
     GraphColoring::AdjVertexList adjVertexList( readInstance( instName ) );
 
     int colorNum = readOptima( instName );
@@ -36,8 +36,8 @@ void run( int inst, ofstream &logFile )
     GraphColoring gc( adjVertexList, colorNum );
 
     int tabuTenureBase = 0;
-    int maxGenerationCount = 100;
-    int maxIterCount = 100000;
+    int maxGenerationCount = 10;
+    int maxIterCount = 1000000;
     int populationSize = 1;
 
     gc.init( tabuTenureBase, maxGenerationCount, maxIterCount, populationSize );

@@ -144,7 +144,7 @@ GraphColoring::Solution& GraphColoring::Solution::operator=(const Solution &s)
 
 int GraphColoring::Solution::localSearch( int maxIterCount )
 {
-    RandSelect rs;
+    RandSelect maxReduceSelect;
 
     int iterCount = 0;
     for (; iterCount < maxIterCount; iterCount++) {
@@ -160,8 +160,8 @@ int GraphColoring::Solution::localSearch( int maxIterCount )
                         int reduce = ac[color] - ac[c];
                         if (reduce > maxReduce.reduce) {
                             maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
-                            rs.reset();
-                        } else if ((reduce == maxReduce.reduce) && rs.isSelected()) {
+                            maxReduceSelect.reset();
+                        } else if ((reduce == maxReduce.reduce) && maxReduceSelect.isSelected()) {
                             maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
                         }
                     }
@@ -193,21 +193,17 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
 {
     Solution localOptima( *this );
 
-    RandSelect maxReduceSelect;
-
-    int conflictVertexNum = 0;
-    for (size_t i = 0; i < adjColorTab.size(); i++) {
-        if (adjColorTab[i][vertexColor[i]] > 0) {
-            conflictVertexNum++;
-        }
-    }
+    RandSelect maxReduceSelectT;
+    RandSelect maxReduceSelectNT;
 
     int iterCount = 1;
     for (; iterCount < maxIterCount; iterCount++) {
-        ConflictReduce maxReduce( -gc->MAX_CONFLICT );  // positive value if improved
+        // positive value if improved
+        ConflictReduce maxReduceT( -gc->MAX_CONFLICT );     // for tabu
+        ConflictReduce maxReduceNT( -gc->MAX_CONFLICT );    // for none-tabu
 
         // find best conflictEdgeNum reduction
-        for (size_t v = 0; v < adjColorTab.size(); v++) {
+        for (int v = 0; static_cast<size_t>(v) < adjColorTab.size(); v++) {
             int color = vertexColor[v];
             AdjColor &ac = adjColorTab[v];
             if (ac[color] > 0) {    // for each vertex with conflictEdgeNum
@@ -215,21 +211,20 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
                     if (c != color) {  // for each destination color
                         int reduce = ac[color] - ac[c];
                         if (tabu[v][c] < iterCount) {
-                            if (reduce > maxReduce.reduce) {
-                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
-                                maxReduceSelect.reset();
-                            } else if ((reduce == maxReduce.reduce)
-                                && maxReduceSelect.isSelected()) {
-                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                            if (reduce > maxReduceNT.reduce) {
+                                maxReduceNT = ConflictReduce( reduce, v, c );
+                                maxReduceSelectNT.reset();
+                            } else if ((reduce == maxReduceNT.reduce)
+                                && maxReduceSelectNT.isSelected()) {
+                                maxReduceNT = ConflictReduce( reduce, v, c );
                             }
-                        } else if ((conflictEdgeNum - reduce) < gc->optima.conflictEdgeNum) {
-                            if (reduce > maxReduce.reduce) {
-                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
-                                maxReduceSelect.reset();
-                            } else if ((reduce == maxReduce.reduce)
-                                && (tabu[v][c] < iterCount)     // only consider non-tabu if the reduction is the same
-                                && maxReduceSelect.isSelected()) {
-                                maxReduce = ConflictReduce( reduce, static_cast<int>(v), c );
+                        } else {
+                            if (reduce > maxReduceT.reduce) {
+                                maxReduceT = ConflictReduce( reduce, v, c );
+                                maxReduceSelectT.reset();
+                            } else if ((reduce == maxReduceT.reduce)
+                                && maxReduceSelectT.isSelected()) {
+                                maxReduceT = ConflictReduce( reduce, v, c );
                             }
                         }
                     }
@@ -238,9 +233,20 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
         }
 
         // check if there is a conflictEdgeNum reduction
+        ConflictReduce maxReduce( -gc->MAX_CONFLICT );
+        if ((maxReduceNT.reduce < maxReduceT.reduce)
+            && ((conflictEdgeNum - maxReduceT.reduce) < localOptima.conflictEdgeNum)) {
+            maxReduce = maxReduceT;
+        } else {
+            maxReduce = maxReduceNT;
+        }
+
         if (maxReduce.reduce <= 0) {
             if (localOptima.conflictEdgeNum > conflictEdgeNum) {    // update local optima
                 localOptima = *this;
+                if (conflictEdgeNum <= 0) {
+                    break;
+                }
             }
         }
 
@@ -252,19 +258,12 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
         for (AdjVertex::const_iterator iter = av.begin();
             iter != av.end(); iter++) {
             adjColorTab[*iter][srcColor]--;
-            if (adjColorTab[*iter][srcColor] == 0) {
-                conflictVertexNum--;
-            }
-            if (adjColorTab[*iter][maxReduce.desColor] == 0) {
-                conflictVertexNum++;
-            }
             adjColorTab[*iter][maxReduce.desColor]++;
         }
 
         // update tabu list
-        int base = conflictVertexNum * gc->colorNum / 8;
-        RangeRand tabuTenurePerturb( -base / 4, base / 4 );
-        tabu[maxReduce.vertex][srcColor] = iterCount + base + tabuTenureBase + tabuTenurePerturb();
+        RangeRand tabuTenurePerturb( 0, 10 );
+        tabu[maxReduce.vertex][srcColor] = iterCount + conflictEdgeNum + tabuTenurePerturb();
     }
 
 
