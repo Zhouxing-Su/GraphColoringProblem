@@ -16,7 +16,10 @@ int main()
     ofstream csvFile( LOG_FILE, ios::app );
     //GraphColoring::initResultSheet( csvFile );
 
-    run( 0, csvFile );
+    //for (int inst = 0; inst < INSTANCE_NUM; inst++) {
+    //    run( inst, csvFile );
+    //}
+    run( 5, csvFile );
 
     csvFile.close();
     system( "pause" );
@@ -27,23 +30,31 @@ int main()
 
 void run( int inst, ofstream &logFile )
 {
-    const string &instName = INSTANCE[2];
+    const string &instName = INSTANCE[inst];
     GraphColoring::AdjVertexList adjVertexList( readInstance( instName ) );
 
     int colorNum = readOptima( instName );
     int vertexNum = adjVertexList.size();
 
-    GraphColoring gc( adjVertexList, colorNum );
-
     int tabuTenureBase = 0;
-    int maxGenerationCount = 10;
-    int maxIterCount = 1000000;
+    int maxGenerationCount = 1;
+    int maxIterCount = 10000000;
     int populationSize = 1;
 
-    gc.init( tabuTenureBase, maxGenerationCount, maxIterCount, populationSize );
-    gc.solve();
-    gc.print();
-    gc.appendResultToSheet( instName, logFile );
+    for (int runTime = 4; runTime > 0; runTime--) {
+        GraphColoring gc( adjVertexList, colorNum );
+
+        gc.init( tabuTenureBase, maxGenerationCount, maxIterCount, populationSize );
+        gc.solve();
+        gc.print();
+        gc.appendResultToSheet( instName, logFile );
+
+        // modify algorithm arguments
+        //tabuTenureBase += 0;
+        //maxGenerationCount += 1;
+        //maxIterCount += 10000000;
+        //populationSize += 1;
+    }
 }
 
 

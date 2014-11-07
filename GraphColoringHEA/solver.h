@@ -18,17 +18,20 @@ const int MAX_BUF_LEN = 1000;   // max length for char array buf
 const std::string LOG_FILE = "log.csv";
 const std::string INST_DIR = "../instance/";
 const std::string OPTIMA_FILE = "optima.txt";
-const std::string INSTANCE[10] = {
+const int INSTANCE_NUM = 12;
+const std::string INSTANCE[INSTANCE_NUM] = {
     "DSJC125.1.col",    // 0
     "DSJC250.1.col",    // 1
     "DSJC250.5.col",    // 2
     "DSJC250.9.col",    // 3
     "DSJC500.1.col",    // 4
-    "DSJC500.5.col",    // 5
-    "DSJC500.9.col",    // 6
-    "DSJC1000.1.col",   // 7
-    "DSJC1000.5.col",   // 8
-    "DSJC1000.9.col"    // 9
+    "DSJC500.5.col",    // 5    (49)
+    "DSJC500.5.col",    // 6    (48)
+    "DSJC500.9.col",    // 7
+    "DSJC1000.1.col",   // 8
+    "DSJC1000.5.col",   // 9
+    "DSJC1000.9.col",   // 10   (224)
+    "DSJC1000.9.col"    // 11   (223)
 };
 
 
