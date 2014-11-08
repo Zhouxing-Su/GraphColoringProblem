@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <cmath>
 
 #include "GraphColoring.h"
 #include "solver.h"
@@ -16,10 +17,10 @@ int main()
     ofstream csvFile( LOG_FILE, ios::app );
     //GraphColoring::initResultSheet( csvFile );
 
-    //for (int inst = 0; inst < INSTANCE_NUM; inst++) {
-    //    run( inst, csvFile );
-    //}
-    run( 5, csvFile );
+    for (int inst = 0; inst < 5; inst++) {
+        run( inst, csvFile );
+    }
+    //run( 4, csvFile );
 
     csvFile.close();
     system( "pause" );
@@ -36,12 +37,13 @@ void run( int inst, ofstream &logFile )
     int colorNum = readOptima( instName );
     int vertexNum = adjVertexList.size();
 
+    //int tabuTenureBase = static_cast<int>(sqrt( colorNum ));
     int tabuTenureBase = 0;
     int maxGenerationCount = 1;
     int maxIterCount = 80000000;
     int populationSize = 1;
 
-    for (int runTime = 4; runTime > 0; runTime--) {
+    for (int runTime = 8; runTime > 0; runTime--) {
         GraphColoring gc( adjVertexList, colorNum );
 
         gc.init( tabuTenureBase, maxGenerationCount, maxIterCount, populationSize );
