@@ -38,7 +38,7 @@ const std::string INSTANCE[INSTANCE_NUM] = {
 
 void run( int inst, std::ofstream &logFile );
 GraphColoring::AdjVertexList readInstance( const std::string &fileName );
-int readOptima( const std::string &instName );
+int readOptima( int inst );
 
 
 #define SOLVER_H

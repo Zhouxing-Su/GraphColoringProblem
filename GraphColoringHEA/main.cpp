@@ -17,7 +17,7 @@ int main()
     ofstream csvFile( LOG_FILE, ios::app );
     //GraphColoring::initResultSheet( csvFile );
 
-    for (int inst = 0; inst < 6; inst++) {
+    for (int inst = 0; inst < 7; inst++) {
         run( inst, csvFile );
     }
     //run( 4, csvFile );
@@ -34,14 +34,14 @@ void run( int inst, ofstream &logFile )
     const string &instName = INSTANCE[inst];
     GraphColoring::AdjVertexList adjVertexList( readInstance( instName ) );
 
-    int colorNum = readOptima( instName );
+    int colorNum = readOptima( inst );
     int vertexNum = adjVertexList.size();
 
     //int tabuTenureBase = static_cast<int>(sqrt( colorNum ));
     int tabuTenureBase = 0;
     int maxGenerationCount = static_cast<int>(1E4);
     int maxIterCount = static_cast<int>(1E5);
-    int populationSize = 8;
+    int populationSize = 4;
     int mutateIndividualNum = populationSize / 4;
 
     for (int runTime = 8; runTime > 0; runTime--) {
@@ -52,26 +52,31 @@ void run( int inst, ofstream &logFile )
         gc.solve();
         gc.print();
         gc.appendResultToSheet( instName, logFile );
+    }
 
-        // modify algorithm arguments
-        //tabuTenureBase += 0;
-        //maxGenerationCount += 1;
-        //maxIterCount += 10000000;
-        //populationSize += 1;
+    populationSize = 8;
+    for (int runTime = 8; runTime > 0; runTime--) {
+        GraphColoring gc( adjVertexList, colorNum );
+
+        gc.init( tabuTenureBase, maxGenerationCount, maxIterCount,
+            populationSize, mutateIndividualNum );
+        gc.solve();
+        gc.print();
+        gc.appendResultToSheet( instName, logFile );
     }
 }
 
 
-int readOptima( const string &instName )
+int readOptima( int inst )
 {
-    string inst;
+    string instName;
     int optima;
     string time;
     ifstream ifs( INST_DIR + OPTIMA_FILE );
 
-    do {
-        ifs >> inst >> optima >> time;
-    } while (inst != instName);
+    for (; inst >= 0; inst--) {
+        ifs >> instName >> optima >> time;
+    }
 
     ifs.close();
 
