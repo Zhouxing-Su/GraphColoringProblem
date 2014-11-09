@@ -17,7 +17,7 @@ int main()
     ofstream csvFile( LOG_FILE, ios::app );
     //GraphColoring::initResultSheet( csvFile );
 
-    for (int inst = 0; inst < 5; inst++) {
+    for (int inst = 0; inst < 6; inst++) {
         run( inst, csvFile );
     }
     //run( 4, csvFile );
@@ -39,14 +39,16 @@ void run( int inst, ofstream &logFile )
 
     //int tabuTenureBase = static_cast<int>(sqrt( colorNum ));
     int tabuTenureBase = 0;
-    int maxGenerationCount = 1;
-    int maxIterCount = 80000000;
-    int populationSize = 1;
+    int maxGenerationCount = static_cast<int>(1E4);
+    int maxIterCount = static_cast<int>(1E5);
+    int populationSize = 8;
+    int mutateIndividualNum = populationSize / 4;
 
     for (int runTime = 8; runTime > 0; runTime--) {
         GraphColoring gc( adjVertexList, colorNum );
 
-        gc.init( tabuTenureBase, maxGenerationCount, maxIterCount, populationSize );
+        gc.init( tabuTenureBase, maxGenerationCount, maxIterCount,
+            populationSize, mutateIndividualNum );
         gc.solve();
         gc.print();
         gc.appendResultToSheet( instName, logFile );

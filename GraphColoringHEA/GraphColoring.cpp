@@ -6,7 +6,7 @@ using namespace std;
 ///=== [ solving procedure ] ===============================
 
 GraphColoring::GraphColoring( const AdjVertexList &avl, int cn )
-    : MAX_CONFLICT( avl.size() * avl.size() ), colorNum( cn ),
+    : MAX_CONFLICT( avl.size() * avl.size() ), vertexNum( avl.size() ), colorNum( cn ),
     adjVertexList( avl ), population(), optima( MAX_CONFLICT ),
     iterCount( 0 ), generationCount( 0 ), timer()
 {
@@ -15,18 +15,23 @@ GraphColoring::GraphColoring( const AdjVertexList &avl, int cn )
 
 
 void GraphColoring::init( int tabuTenureBase,
-    int maxGenerationCount, int maxIterCount, int populationSize )
+    int maxGenerationCount, int maxIterCount,
+    int populationSize, int mutateIndividualNum )
 {
+    timer.reset();
+
     POPULATION_SIZE = populationSize;
     MAX_GENERATION_COUNT = maxGenerationCount;
     MAX_ITERATION_COUNT = maxIterCount;
     TABU_TENURE_BASE = tabuTenureBase;
+    MUTATE_INDIVIDUAL_NUM = mutateIndividualNum;
 
     ostringstream ss;
     ss << "HEA(PS=" << POPULATION_SIZE
         << "|GC=" << MAX_GENERATION_COUNT
         << "|IC=" << MAX_ITERATION_COUNT
         << "|TB=" << TABU_TENURE_BASE
+        << "|MN=" << MUTATE_INDIVIDUAL_NUM
         << ')';
     SOLVING_ALGORITHM = ss.str();
 
@@ -36,26 +41,29 @@ void GraphColoring::init( int tabuTenureBase,
 
 void GraphColoring::solve()
 {
-    timer.reset();
+    if (optima.conflictEdgeNum > 0) {   // in case the optima is found in init()
+        for (; generationCount < MAX_GENERATION_COUNT; generationCount++) {
+            // select parents
+            VertexSet parentSet( selectParents() );
 
-    for (; generationCount < MAX_GENERATION_COUNT; generationCount++) {
-        // select parents
-        ParentSet parentSet( selectParents() );
+            // combine
+            Solution offspring( combineParents( parentSet ) );
 
-        // combine
-        Solution offspring( combineParents( parentSet ) );
+            // local search on offspring
+            //iterCount += offspring.localSearch( MAX_ITERATION_COUNT );
+            iterCount += offspring.tabuSearch( MAX_ITERATION_COUNT, TABU_TENURE_BASE );
 
-        // local search on offspring
-        //offspring.localSearch( MAX_ITERATION_COUNT );
-        iterCount += offspring.tabuSearch( MAX_ITERATION_COUNT, TABU_TENURE_BASE );
+            // update optima and check if there is no conflict
+            if (updateOptima( offspring )) {
+                break;
+            }
 
-        // update optima and check if there is no conflict
-        if (updateOptima( offspring )) {
-            break;
+            // replace bad individual or resize the population
+            updatePopulation( offspring );
+
+            // increase the diversification of the population
+            mutateIndividuals( MUTATE_INDIVIDUAL_NUM );
         }
-
-        // population update
-        updatePopulation( offspring );
     }
 
     timer.record();
@@ -65,26 +73,111 @@ void GraphColoring::solve()
 void GraphColoring::genInitPopulation( int size )
 {
     while (size--) {
-        population.push_back( Solution( this ) );
-        updateOptima( population.back() );
+        Solution s( this, genRandomColorAssign( vertexNum, colorNum ) );
+        s.tabuSearch( MAX_ITERATION_COUNT, TABU_TENURE_BASE );
+        //s.localSearch( MAX_ITERATION_COUNT );
+        population.push_back( s );
+        if (updateOptima( s )) {
+            return;
+        }
     }
 }
 
-GraphColoring::ParentSet GraphColoring::selectParents()
+GraphColoring::VertexSet GraphColoring::selectParents()
 {
+    // select one individual randomly as first parent
     RangeRand rr( 0, population.size() - 1 );
-    ParentSet parents;
+    int parent1 = rr();
 
-    parents.insert( rr() );
+    // then select one of the best individuals as second parent
+    RandSelect rs;
+    int parent2 = ((parent1 == 0) ? 1 : 0);
+    int minConflict = population[parent2].evaluate();
+    for (int i = parent2 + 1; i < static_cast<int>(population.size()); i++) {
+        if (i != parent1) {
+            int conflict = population[i].evaluate();
+            if (conflict < minConflict) {
+                parent2 = i;
+                minConflict = conflict;
+                rs.reset();
+            } else if ((conflict == minConflict)
+                && (rs.isSelected())) {
+                parent2 = i;
+                minConflict = conflict;
+            }
+        }
+    }
+
+    // record the parents
+    VertexSet parents;
+    parents.insert( parent1 );
+    parents.insert( parent2 );
 
     return parents;
 }
 
-GraphColoring::Solution GraphColoring::combineParents( const ParentSet &parents )
+GraphColoring::Solution GraphColoring::combineParents( const VertexSet &parents )
 {
-    Solution offspring( population[*parents.begin()] );
+    vector<ColorVertex> pcv( parents.size() );
 
-    return offspring;
+    int i = 0;
+    for (VertexSet::const_iterator iter = parents.begin();
+        iter != parents.end(); iter++, i++) {
+        pcv[i] = population[*iter];
+    }
+
+    VertexColor vc( vertexNum );
+
+    // for each color, loop select in parents
+    for (int i = 0, parent = 0; i < colorNum;
+        i++, ((++parent) %= parents.size())) {
+        ColorVertex &cv( pcv[parent] );
+        // find color with most vertices
+        RandSelect rs;
+        int colorWithMostVertices = 0;
+        int maxVertexNum = cv[colorWithMostVertices].size();
+        for (int c = 1; c < colorNum; c++) {
+            if (static_cast<int>(cv[c].size()) > maxVertexNum) {
+                maxVertexNum = cv[c].size();
+                colorWithMostVertices = c;
+                rs.reset();
+            } else if ((cv[c].size() == maxVertexNum)
+                && rs.isSelected()) {
+                maxVertexNum = cv[c].size();
+                colorWithMostVertices = c;
+            }
+        }
+
+        // assign color with most vertices to its vertices
+        for (VertexSet::iterator iter = cv[colorWithMostVertices].begin();
+            iter != cv[colorWithMostVertices].end(); iter++) {
+            vc[*iter] = i;
+            // remove this vertex from VertexSet of all color of all parents
+            for (int p = 0; p < static_cast<int>(pcv.size()); p++) {
+                if (p != parent) {  // leave it out in case the iter becomes invalidate
+                    for (int c = 0; c < colorNum; c++) {
+                        if (pcv[p][c].erase( *iter ) == 1) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        // clear this VertexSet alone also make it more efficient
+        cv[colorWithMostVertices].clear();
+    }
+
+    // assign random color to rest vertices
+    RangeRand rColor( 0, colorNum - 1 );
+    ColorVertex &cv( pcv[0] );
+    for (int i = 0; i < colorNum; i++) {
+        for (VertexSet::iterator iter = cv[i].begin();
+            iter != cv[i].end(); iter++) {
+            vc[*iter] = rColor();
+        }
+    }
+
+    return Solution( this, vc );
 }
 
 bool GraphColoring::updateOptima( const Solution &sln )
@@ -97,22 +190,59 @@ bool GraphColoring::updateOptima( const Solution &sln )
 
 void GraphColoring::updatePopulation( const Solution &offspring )
 {
-    population[0] = offspring;
+    // select one of the worst individuals to drop
+    RandSelect rs;
+    int worstSln = 0;
+    for (int i = 1; i < static_cast<int>(population.size()); i++) {
+        if (population[worstSln] < population[i]) {
+            worstSln = i;
+            rs.reset();
+        } else if ((population[worstSln] == population[i])
+            && (rs.isSelected())) {
+            worstSln = i;
+        }
+    }
+
+    // replace old or just add the offspring
+    if (offspring < population[worstSln]) {
+        population[worstSln] = offspring;
+    } else if (population.size() < static_cast<size_t>(2 * POPULATION_SIZE)) {
+        population.push_back( offspring );
+    } else {    // cull excess bad individuals
+        sort( population.begin(), population.end() );
+        //population.resize( POPULATION_SIZE ); // need default constructor which is dangerous
+        while (static_cast<int>(population.size()) > POPULATION_SIZE) {
+            population.pop_back();
+        }
+    }
+}
+
+void GraphColoring::mutateIndividuals( int mutateIndividualNum )
+{
+    // called after population cull or other condition?
+
+
+
+}
+
+GraphColoring::VertexColor GraphColoring::genRandomColorAssign( int vertexNum, int colorNum )
+{
+    VertexColor vc( vertexNum );
+    RangeRand rColor( 0, colorNum - 1 );
+    for (int vertex = 0; vertex < vertexNum; vertex++) {
+        vc[vertex] = rColor();
+    }
+
+    return vc;
 }
 
 ///=== [ Solution ] ===============================
 
-GraphColoring::Solution::Solution( const GraphColoring *pgc )
-    : gc( pgc ), conflictEdgeNum( 0 ), vertexColor( pgc->adjVertexList.size() ),
-    adjColorTab( pgc->adjVertexList.size(), vector<int>( pgc->colorNum, 0 ) ),
-    tabu( pgc->adjVertexList.size(), vector<int>( pgc->colorNum, 0 ) )
+GraphColoring::Solution::Solution( const GraphColoring *pgc, const VertexColor &vc )
+    : gc( pgc ), conflictEdgeNum( 0 ), vertexColor( vc ),
+    adjColorTab( pgc->vertexNum, vector<int>( pgc->colorNum, 0 ) ),
+    tabu( pgc->vertexNum, vector<int>( pgc->colorNum, 0 ) )
 {
-    // assign color for each vertex randomly
-    RangeRand rColor( 0, pgc->colorNum - 1 );
-    for (size_t vertex = 0; vertex < vertexColor.size(); vertex++) {
-        vertexColor[vertex] = rColor();
-    }
-
     // generate adjColorTable and evaluate conflictEdgeNum
     for (size_t vertex = 0; vertex < adjColorTab.size(); vertex++) {
         AdjColor &adjColor = adjColorTab[vertex];
@@ -128,7 +258,7 @@ GraphColoring::Solution::Solution( const GraphColoring *pgc )
 GraphColoring::Solution::Solution( const Solution &s )
     :gc( s.gc ), conflictEdgeNum( s.conflictEdgeNum ),
     vertexColor( s.vertexColor ), adjColorTab( s.adjColorTab ),
-    tabu( gc->adjVertexList.size(), vector<int>( gc->colorNum, 0 ) )
+    tabu( gc->vertexNum, vector<int>( gc->colorNum, 0 ) )
 {
 }
 
@@ -138,7 +268,7 @@ GraphColoring::Solution& GraphColoring::Solution::operator=(const Solution &s)
     conflictEdgeNum = s.conflictEdgeNum;
     vertexColor = s.vertexColor;
     adjColorTab = s.adjColorTab;
-    tabu = AdjColorTable( gc->adjVertexList.size(), vector<int>( gc->colorNum, 0 ) );
+    tabu = AdjColorTable( gc->vertexNum, vector<int>( gc->colorNum, 0 ) );
     return *this;
 }
 
@@ -273,6 +403,16 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
     return iterCount;
 }
 
+GraphColoring::Solution::operator GraphColoring::ColorVertex() const
+{
+    ColorVertex cv( gc->colorNum );
+
+    for (int i = 0; i < gc->vertexNum; i++) {
+        cv[vertexColor[i]].insert( i );
+    }
+
+    return cv;
+}
 
 ///=== [ output ] ===============================
 
@@ -284,7 +424,7 @@ int GraphColoring::check() const
 int GraphColoring::check( const VertexColor &vertexColor ) const
 {
     int conflictEdgeNum = 0;
-    for (size_t vertex = 0; vertex < adjVertexList.size(); vertex++) {
+    for (int vertex = 0; vertex < vertexNum; vertex++) {
         Color color = vertexColor[vertex];
         const AdjVertex &adjVertex = adjVertexList[vertex];
         for (size_t adj = 0; adj < adjVertex.size(); adj++) {
