@@ -59,10 +59,10 @@ void GraphColoring::solve()
             }
 
             // replace bad individual or resize the population
-            updatePopulation( offspring );
-
-            // increase the diversification of the population
-            mutateIndividuals( MUTATE_INDIVIDUAL_NUM );
+            if (updatePopulation( offspring )) {
+                // increase the diversification of the population
+                mutateIndividuals( MUTATE_INDIVIDUAL_NUM );
+            }
         }
     }
 
@@ -188,7 +188,7 @@ bool GraphColoring::updateOptima( const Solution &sln )
     return (optima.conflictEdgeNum <= 0);
 }
 
-void GraphColoring::updatePopulation( const Solution &offspring )
+bool GraphColoring::updatePopulation( const Solution &offspring )
 {
     // select one of the worst individuals to drop
     RandSelect rs;
@@ -214,15 +214,27 @@ void GraphColoring::updatePopulation( const Solution &offspring )
         while (static_cast<int>(population.size()) > POPULATION_SIZE) {
             population.pop_back();
         }
+        return true;
     }
+
+    return false;
 }
 
 void GraphColoring::mutateIndividuals( int mutateIndividualNum )
 {
     // called after population cull or other condition?
+    RangeRand rr( 0, population.size() - 1 );
+    set<int> mutatedIndividuals;
 
+    while (mutateIndividualNum--) {
+        int individual;
+        do {
+            individual = rr();
+        } while (mutatedIndividuals.find( individual ) != mutatedIndividuals.end());
+        mutatedIndividuals.insert( individual );
 
-
+        population[individual].perturb();
+    }
 }
 
 GraphColoring::VertexColor GraphColoring::genRandomColorAssign( int vertexNum, int colorNum )
@@ -239,14 +251,20 @@ GraphColoring::VertexColor GraphColoring::genRandomColorAssign( int vertexNum, i
 ///=== [ Solution ] ===============================
 
 GraphColoring::Solution::Solution( const GraphColoring *pgc, const VertexColor &vc )
-    : gc( pgc ), conflictEdgeNum( 0 ), vertexColor( vc ),
-    adjColorTab( pgc->vertexNum, vector<int>( pgc->colorNum, 0 ) ),
-    tabu( pgc->vertexNum, vector<int>( pgc->colorNum, 0 ) )
+    : gc( pgc ), conflictEdgeNum( 0 ), vertexColor( vc ), adjColorTab(), tabu()
 {
-    // generate adjColorTable and evaluate conflictEdgeNum
+    initDataStructure();
+}
+
+void GraphColoring::Solution::initDataStructure()
+{
+    conflictEdgeNum = 0;
+    adjColorTab = AdjColorTable( gc->vertexNum, vector<int>( gc->colorNum, 0 ) );
+    tabu = AdjColorTable( gc->vertexNum, vector<int>( gc->colorNum, 0 ) );
+
     for (size_t vertex = 0; vertex < adjColorTab.size(); vertex++) {
         AdjColor &adjColor = adjColorTab[vertex];
-        const AdjVertex &adjVertex = pgc->adjVertexList[vertex];
+        const AdjVertex &adjVertex = gc->adjVertexList[vertex];
         for (size_t adj = 0; adj < adjVertex.size(); adj++) {
             adjColor[vertexColor[adjVertex[adj]]]++;
         }
@@ -401,6 +419,20 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
     *this = localOptima;
 
     return iterCount;
+}
+
+void GraphColoring::Solution::perturb()
+{
+    RangeRand rrColor( 0, gc->colorNum - 1 );
+    RangeRand rrVertex( 0, gc->vertexNum - 1 );
+    RangeRand rrVertexNum( 1, gc->vertexNum );
+    int perturbVertexNum = rrVertexNum();
+
+    for (; perturbVertexNum > 0; perturbVertexNum--) {
+        vertexColor[rrVertex()] = rrColor();
+    }
+
+    initDataStructure();
 }
 
 GraphColoring::Solution::operator GraphColoring::ColorVertex() const

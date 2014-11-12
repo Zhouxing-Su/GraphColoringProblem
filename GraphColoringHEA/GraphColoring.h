@@ -111,6 +111,9 @@ private:    // private types
         // (the object will be the optima in the search path after this is called)
         int tabuSearch( int maxIterCount, int tabuTenureBase );
 
+        // reset random colors for randomly selected vertices
+        void perturb();
+
         // return color conflictEdgeNum
         int evaluate() const { return conflictEdgeNum; }
         // compare the conflictEdgeNum (the less is the better)
@@ -129,12 +132,16 @@ private:    // private types
         operator ColorVertex() const;
 
     private:
+        // generate adjColorTable and evaluate conflictEdgeNum
+        void initDataStructure();   // call it if vertexColor is changed
+
+    private:
         const GraphColoring *gc;  // avoid deep copy
         int conflictEdgeNum;
 
         VertexColor vertexColor;
-        AdjColorTable adjColorTab;
 
+        AdjColorTable adjColorTab;  // conflicts for each vertex with each color
         AdjColorTable tabu;   // tabu a vertex changes to a color
     };
 
@@ -164,7 +171,7 @@ private:    // functional procedure
     VertexSet selectParents();
     Solution combineParents( const VertexSet &parents );
     bool updateOptima( const Solution &sln );   // return true if there is no conflict
-    void updatePopulation( const Solution &offspring );
+    bool updatePopulation( const Solution &offspring ); // return true if the population is shrunk
     void mutateIndividuals( int mutateIndividualNum );
 
     static VertexColor genRandomColorAssign( int vertexNum, int colorNum );
