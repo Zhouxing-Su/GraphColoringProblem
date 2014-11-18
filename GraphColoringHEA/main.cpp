@@ -17,10 +17,10 @@ int main()
     ofstream csvFile( LOG_FILE, ios::app );
     //GraphColoring::initResultSheet( csvFile );
 
-    for (int inst = 0; inst < 7; inst++) {
-        run( inst, csvFile );
-    }
-    //run( 4, csvFile );
+    //for (int inst = 0; inst < 7; inst++) {
+    //    run( inst, csvFile );
+    //}
+    run( 4, csvFile );
 
     csvFile.close();
     system( "pause" );

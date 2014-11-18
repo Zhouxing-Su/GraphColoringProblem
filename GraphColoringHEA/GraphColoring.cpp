@@ -251,7 +251,8 @@ GraphColoring::VertexColor GraphColoring::genRandomColorAssign( int vertexNum, i
 ///=== [ Solution ] ===============================
 
 GraphColoring::Solution::Solution( const GraphColoring *pgc, const VertexColor &vc )
-    : gc( pgc ), conflictEdgeNum( 0 ), vertexColor( vc ), adjColorTab(), tabu()
+    : gc( pgc ), conflictEdgeNum( 0 ), conflictVertices( pgc->vertexNum ),
+    vertexColor( vc ), adjColorTab(), tabu()
 {
     initDataStructure();
 }
@@ -269,12 +270,15 @@ void GraphColoring::Solution::initDataStructure()
             adjColor[vertexColor[adjVertex[adj]]]++;
         }
         conflictEdgeNum += adjColor[vertexColor[vertex]];
+        if (adjColor[vertexColor[vertex]] > 0) {
+            conflictVertices.insert( vertex );
+        }
     }
     conflictEdgeNum /= 2;
 }
 
 GraphColoring::Solution::Solution( const Solution &s )
-    :gc( s.gc ), conflictEdgeNum( s.conflictEdgeNum ),
+    :gc( s.gc ), conflictEdgeNum( s.conflictEdgeNum ), conflictVertices( s.conflictVertices ),
     vertexColor( s.vertexColor ), adjColorTab( s.adjColorTab ),
     tabu( gc->vertexNum, vector<int>( gc->colorNum, 0 ) )
 {
@@ -283,6 +287,7 @@ GraphColoring::Solution::Solution( const Solution &s )
 GraphColoring::Solution& GraphColoring::Solution::operator=(const Solution &s)
 {
     gc = s.gc;
+    conflictVertices = s.conflictVertices;
     conflictEdgeNum = s.conflictEdgeNum;
     vertexColor = s.vertexColor;
     adjColorTab = s.adjColorTab;
@@ -351,30 +356,29 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
         ConflictReduce maxReduceT( -gc->MAX_CONFLICT );     // for tabu
         ConflictReduce maxReduceNT( -gc->MAX_CONFLICT );    // for none-tabu
 
-        // find best conflictEdgeNum reduction
-        for (int v = 0; static_cast<size_t>(v) < adjColorTab.size(); v++) {
+        // for each vertex with conflictEdgeNum, find best conflictEdgeNum reduction
+        for (int i = 0; i < conflictVertices.size(); i++) {
+            int v = conflictVertices.elementAt( i );
             int color = vertexColor[v];
             AdjColor &ac = adjColorTab[v];
-            if (ac[color] > 0) {    // for each vertex with conflictEdgeNum
-                for (int c = 0; c < gc->colorNum; c++) {
-                    if (c != color) {  // for each destination color
-                        int reduce = ac[color] - ac[c];
-                        if (tabu[v][c] < iterCount) {
-                            if (reduce > maxReduceNT.reduce) {
-                                maxReduceNT = ConflictReduce( reduce, v, c );
-                                maxReduceSelectNT.reset();
-                            } else if ((reduce == maxReduceNT.reduce)
-                                && maxReduceSelectNT.isSelected()) {
-                                maxReduceNT = ConflictReduce( reduce, v, c );
-                            }
-                        } else {
-                            if (reduce > maxReduceT.reduce) {
-                                maxReduceT = ConflictReduce( reduce, v, c );
-                                maxReduceSelectT.reset();
-                            } else if ((reduce == maxReduceT.reduce)
-                                && maxReduceSelectT.isSelected()) {
-                                maxReduceT = ConflictReduce( reduce, v, c );
-                            }
+            for (int c = 0; c < gc->colorNum; c++) {
+                if (c != color) {  // for each destination color
+                    int reduce = ac[color] - ac[c];
+                    if (tabu[v][c] < iterCount) {
+                        if (reduce > maxReduceNT.reduce) {
+                            maxReduceNT = ConflictReduce( reduce, v, c );
+                            maxReduceSelectNT.reset();
+                        } else if ((reduce == maxReduceNT.reduce)
+                            && maxReduceSelectNT.isSelected()) {
+                            maxReduceNT = ConflictReduce( reduce, v, c );
+                        }
+                    } else {
+                        if (reduce > maxReduceT.reduce) {
+                            maxReduceT = ConflictReduce( reduce, v, c );
+                            maxReduceSelectT.reset();
+                        } else if ((reduce == maxReduceT.reduce)
+                            && maxReduceSelectT.isSelected()) {
+                            maxReduceT = ConflictReduce( reduce, v, c );
                         }
                     }
                 }
@@ -407,8 +411,20 @@ int GraphColoring::Solution::tabuSearch( int maxIterCount, int tabuTenureBase )
         for (AdjVertex::const_iterator iter = av.begin();
             iter != av.end(); iter++) {
             adjColorTab[*iter][srcColor]--;
+            int c = vertexColor[*iter];
+            if ((c == srcColor)
+                && adjColorTab[*iter][c] <= 0) {
+                conflictVertices.eraseElement( *iter );
+            } else if ((c == maxReduce.desColor)
+                && (adjColorTab[*iter][c] <= 0)) {
+                conflictVertices.insert( *iter );
+            }
             adjColorTab[*iter][maxReduce.desColor]++;
         }
+        if ((adjColorTab[maxReduce.vertex][maxReduce.desColor] <= 0)
+            && (adjColorTab[maxReduce.vertex][srcColor] > 0)) {
+            conflictVertices.eraseElement( maxReduce.vertex );
+        } // a non-conflict vertex won't be searched, so no else
 
         // update tabu list
         tabu[maxReduce.vertex][srcColor] = iterCount + conflictEdgeNum + tabuTenureBase + tabuTenurePerturb();

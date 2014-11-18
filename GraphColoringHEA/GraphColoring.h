@@ -40,6 +40,7 @@
 #include "../CPPutilibs/Random.h"
 #include "../CPPutilibs/RangeRand.h"
 #include "../CPPutilibs/RandSelect.h"
+#include "../CPPutilibs/BidirectionIndex.h"
 
 
 class GraphColoring
@@ -137,6 +138,7 @@ private:    // private types
 
     private:
         const GraphColoring *gc;  // avoid deep copy
+        BidirectionIndex conflictVertices;
         int conflictEdgeNum;
 
         VertexColor vertexColor;

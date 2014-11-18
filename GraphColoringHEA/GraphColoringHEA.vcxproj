@@ -78,6 +78,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\CPPutilibs\BidirectionIndex.h" />
     <ClInclude Include="..\CPPutilibs\Log.h" />
     <ClInclude Include="..\CPPutilibs\Random.h" />
     <ClInclude Include="..\CPPutilibs\RandSelect.h" />
@@ -87,6 +88,7 @@
     <ClInclude Include="solver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\CPPutilibs\BidirectionIndex.cpp" />
     <ClCompile Include="..\CPPutilibs\Random.cpp" />
     <ClCompile Include="..\CPPutilibs\RandSelect.cpp" />
     <ClCompile Include="..\CPPutilibs\RangeRand.cpp" />
