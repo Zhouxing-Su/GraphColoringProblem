@@ -262,6 +262,7 @@ void GraphColoring::Solution::initDataStructure()
     conflictEdgeNum = 0;
     adjColorTab = AdjColorTable( gc->vertexNum, vector<int>( gc->colorNum, 0 ) );
     tabu = AdjColorTable( gc->vertexNum, vector<int>( gc->colorNum, 0 ) );
+    conflictVertices.clear();
 
     for (size_t vertex = 0; vertex < adjColorTab.size(); vertex++) {
         AdjColor &adjColor = adjColorTab[vertex];
