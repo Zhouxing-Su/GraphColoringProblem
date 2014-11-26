@@ -83,7 +83,7 @@ void GraphColoring::genInitPopulation( int size )
     }
 }
 
-GraphColoring::VertexSet GraphColoring::selectParents()
+GraphColoring::SolutionIndexSet GraphColoring::selectParents()
 {
     // select one individual randomly as first parent
     RangeRand rr( 0, population.size() - 1 );
@@ -109,7 +109,7 @@ GraphColoring::VertexSet GraphColoring::selectParents()
     }
 
     // record the parents
-    VertexSet parents;
+    SolutionIndexSet parents;
     parents.insert( parent1 );
     parents.insert( parent2 );
 

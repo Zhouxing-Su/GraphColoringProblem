@@ -49,6 +49,7 @@ public:     // public types and constant
     typedef int Color;
 
     typedef std::set<int> VertexSet;
+    typedef std::set<int> SolutionIndexSet;
 
     // index of each vertex adjacent to certain vertex
     typedef std::vector<int> AdjVertex;
@@ -138,9 +139,9 @@ private:    // private types
 
     private:
         const GraphColoring *gc;  // avoid deep copy
+
         BidirectionIndex conflictVertices;
         int conflictEdgeNum;
-
         VertexColor vertexColor;
 
         AdjColorTable adjColorTab;  // conflicts for each vertex with each color
@@ -170,8 +171,8 @@ public:     // solving procedure
 
 private:    // functional procedure
     void genInitPopulation( int size ); // contain optima recording
-    VertexSet selectParents();
-    Solution combineParents( const VertexSet &parents );
+    SolutionIndexSet selectParents();
+    Solution combineParents( const SolutionIndexSet &parents );
     bool updateOptima( const Solution &sln );   // return true if there is no conflict
     bool updatePopulation( const Solution &offspring ); // return true if the population is shrunk
     void mutateIndividuals( int mutateIndividualNum );
