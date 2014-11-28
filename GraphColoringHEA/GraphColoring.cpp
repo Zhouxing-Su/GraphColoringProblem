@@ -74,7 +74,7 @@ void GraphColoring::genInitPopulation( int size )
 {
     while (size--) {
         Solution s( this, genRandomColorAssign( vertexNum, colorNum ) );
-        s.tabuSearch( MAX_ITERATION_COUNT, TABU_TENURE_BASE );
+        iterCount += s.tabuSearch( MAX_ITERATION_COUNT, TABU_TENURE_BASE );
         //s.localSearch( MAX_ITERATION_COUNT );
         population.push_back( s );
         if (updateOptima( s )) {
