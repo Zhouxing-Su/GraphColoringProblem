@@ -9,6 +9,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <cmath>
 
 #include "GraphColoring.h"
 
@@ -37,6 +38,7 @@ const std::string INSTANCE[INSTANCE_NUM] = {
 
 
 void run( int inst, std::ofstream &logFile );
+void run_tabu( int inst, std::ofstream &logFile );
 GraphColoring::AdjVertexList readInstance( const std::string &fileName );
 int readOptima( int inst );
 

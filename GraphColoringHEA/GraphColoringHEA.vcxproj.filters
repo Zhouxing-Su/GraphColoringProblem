@@ -68,6 +68,9 @@
     <ClCompile Include="..\CPPutilibs\BidirectionIndex.cpp">
       <Filter>资源文件\CPPutilibs</Filter>
     </ClCompile>
+    <ClCompile Include="solver.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\instance\DSJC125.5.col">

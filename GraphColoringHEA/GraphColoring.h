@@ -108,10 +108,10 @@ private:    // private types
 
         // search until local optima is found, then return iteration count
         // (the object will be the optima in the search path after this is called)
-        int localSearch( int maxIterCount );
+        int localSearch();
         // search until maxIterCount is meet, then return iteration count
         // (the object will be the optima in the search path after this is called)
-        int tabuSearch( int maxIterCount, int tabuTenureBase );
+        int tabuSearch();
 
         // reset random colors for randomly selected vertices
         void perturb();
@@ -152,7 +152,7 @@ public:     // solving procedure
     GraphColoring( const AdjVertexList &adjVertexList, int colorNum );
 
     // set arguments of the algorithm and generate the initial population
-    void init( int tabuTenureBase = 0,
+    void init( int tabuTenureBase = 0, int tabuTenureAmp = 9,
         int maxGenerationCount = 1000, int maxIterCount = 10000,
         int populationSize = 1, int mutateIndividualNum = 0 );
     // find the optima and record it to attribute "optima".
@@ -193,6 +193,7 @@ private:    // attribute
     // information about the algorithm (initialized in init())
     std::string SOLVING_ALGORITHM;
     int TABU_TENURE_BASE;
+    int TABU_TENURE_AMP;
     int POPULATION_SIZE;
     int MAX_GENERATION_COUNT;
     int MAX_ITERATION_COUNT;
