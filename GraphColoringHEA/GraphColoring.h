@@ -19,10 +19,10 @@
 *                   10. if it is worse than the offspring, replace it with offspring.
 *                       else if the population size is smaller than (2 * POPULATION_SIZE), just add the offspring to population.
 *                       else shrink the population size to POPULATION_SIZE.
-*                    11. loop to 4.
+*                   11. loop to 4.
 *
 *   note :  1. MAX_CONFLICT = vertexNum * vertexNum which may overflow if there are too many vertices.
-*           2.
+*           2. set generationCount to 0 to test tabu search.
 */
 
 #ifndef GRAPH_COLORING_H

@@ -42,8 +42,8 @@ void run_tabu( int inst, ofstream &logFile )
     //int tabuTenureBase = static_cast<int>(sqrt( colorNum ));
     int tabuTenureBase = 0;
     int tabuTenureAmp = 9;
-    int maxGenerationCount = 1;
-    int maxIterCount = static_cast<int>(1E9);
+    int maxGenerationCount = 0;
+    int maxIterCount = static_cast<int>(2E9);
     int populationSize = 1;
     int mutateIndividualNum = populationSize / 4;
 
