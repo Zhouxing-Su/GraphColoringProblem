@@ -17,8 +17,8 @@ void run( int inst, ofstream &logFile )
     int tabuTenureAmp = 9;
     int maxGenerationCount = static_cast<int>(2E4);
     int maxIterCount = static_cast<int>(1E5);
-    int populationSize = 1;
-    int mutateIndividualNum = populationSize / 4;
+    int populationSize = 2;
+    int mutateIndividualNum = 1;
 
     for (int runTime = 16; runTime > 0; runTime--) {
         GraphColoring gc( adjVertexList, colorNum );

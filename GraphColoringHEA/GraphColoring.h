@@ -171,10 +171,9 @@ public:     // solving procedure
 
 private:    // functional procedure
     void genInitPopulation( int size ); // contain optima recording
-    SolutionIndexSet selectParents();
-    Solution combineParents( const SolutionIndexSet &parents );
+    std::vector<Solution> combineParents();
     bool updateOptima( const Solution &sln );   // return true if there is no conflict
-    bool updatePopulation( const Solution &offspring ); // return true if the population is shrunk
+    bool updatePopulation( const std::vector<Solution> &offspring ); // return true if the population is shrunk
     void mutateIndividuals( int mutateIndividualNum );
 
     static VertexColor genRandomColorAssign( int vertexNum, int colorNum );

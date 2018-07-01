@@ -45,18 +45,15 @@ void GraphColoring::solve()
 {
     if (optima.conflictEdgeNum > 0) {   // in case the optima is found in init()
         for (; generationCount < MAX_GENERATION_COUNT; generationCount++) {
-            // select parents
-            VertexSet parentSet( selectParents() );
-
-            // combine
-            Solution offspring( combineParents( parentSet ) );
+            vector<Solution> offspring( combineParents() );
 
             // local search on offspring
             //iterCount += offspring.localSearch();
-            iterCount += offspring.tabuSearch();
+            iterCount += offspring[0].tabuSearch();
+            iterCount += offspring[1].tabuSearch();
 
             // update optima and check if there is no conflict
-            if (updateOptima( offspring )) {
+            if (updateOptima( offspring[0] ) || updateOptima( offspring[1] )) {
                 break;
             }
 
@@ -85,54 +82,22 @@ void GraphColoring::genInitPopulation( int size )
     }
 }
 
-GraphColoring::SolutionIndexSet GraphColoring::selectParents()
+vector<GraphColoring::Solution> GraphColoring::combineParents()
 {
-    // select one individual randomly as first parent
-    RangeRand rr( 0, population.size() - 1 );
-    int parent1 = rr();
-
-    // then select one of the best individuals as second parent
-    RandSelect rs;
-    int parent2 = ((parent1 == 0) ? 1 : 0);
-    int minConflict = population[parent2].evaluate();
-    for (int i = parent2 + 1; i < static_cast<int>(population.size()); i++) {
-        if (i != parent1) {
-            int conflict = population[i].evaluate();
-            if (conflict < minConflict) {
-                parent2 = i;
-                minConflict = conflict;
-                rs.reset();
-            } else if ((conflict == minConflict)
-                && (rs.isSelected())) {
-                parent2 = i;
-                minConflict = conflict;
-            }
-        }
-    }
-
-    // record the parents
-    SolutionIndexSet parents;
-    parents.insert( parent1 );
-    parents.insert( parent2 );
-
-    return parents;
-}
-
-GraphColoring::Solution GraphColoring::combineParents( const VertexSet &parents )
-{
-    vector<ColorVertex> pcv( parents.size() );
+    vector<ColorVertex> pcv( POPULATION_SIZE );
 
     int i = 0;
-    for (VertexSet::const_iterator iter = parents.begin();
-        iter != parents.end(); iter++, i++) {
-        pcv[i] = population[*iter];
+    for (vector<Solution>::const_iterator iter = population.begin();
+        iter != population.end(); iter++, i++) {
+        pcv[i] = *iter;
     }
 
+    vector<VertexColor> vvc( POPULATION_SIZE, VertexColor( vertexNum ) );
     VertexColor vc( vertexNum );
 
     // for each color, loop select in parents
     for (int i = 0, parent = 0; i < colorNum;
-        i++, ((++parent) %= parents.size())) {
+        i++, ((++parent) %= POPULATION_SIZE)) {
         ColorVertex &cv( pcv[parent] );
         // find color with most vertices
         RandSelect rs;
@@ -179,7 +144,10 @@ GraphColoring::Solution GraphColoring::combineParents( const VertexSet &parents 
         }
     }
 
-    return Solution( this, vc );
+
+    vector<Solution> offspring;
+
+    return offspring;
 }
 
 bool GraphColoring::updateOptima( const Solution &sln )
@@ -190,7 +158,7 @@ bool GraphColoring::updateOptima( const Solution &sln )
     return (optima.conflictEdgeNum <= 0);
 }
 
-bool GraphColoring::updatePopulation( const Solution &offspring )
+bool GraphColoring::updatePopulation( const vector<Solution> &offspring )
 {
     // select one of the worst individuals to drop
     RandSelect rs;
